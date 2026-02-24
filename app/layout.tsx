@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EcoMed",
-  description: "App Web para generar reportes de acumulación de basuras en Medellín",
+  title: "EcoMed | App Web para generar reportes de acumulación de basuras en Medellín",
+  description: "EcoMed te permite reportar acumulaciones de basura en Medellín para mantener la ciudad limpia y sostenible. Genera reportes rápidos y ayuda a mejorar el entorno urbano.",
 };
 
 export default function RootLayout({
