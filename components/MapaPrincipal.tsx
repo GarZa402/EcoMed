@@ -100,21 +100,31 @@ export default function MapaPrincipal({
   const [estilo, setEstilo] = useState<EstiloMapa>("dark");
   const [marcador, setMarcador] = useState<{ lat: number; lng: number } | null>(null);
   const [miUbicacion, setMiUbicacion] = useState<{ lat: number; lng: number } | null>(null);
+  
+  // ESTADO PARA EL MODAL LEGAL
+  const [mostrarAviso, setMostrarAviso] = useState(true);
 
   const onUbicacionRef = useRef(onUbicacionSeleccionada);
   useEffect(() => {
     onUbicacionRef.current = onUbicacionSeleccionada;
   }, [onUbicacionSeleccionada]);
 
-  // Muestra ubicación al cargar la página
-  useEffect(() => {
+  // FUNCIONES PARA EL CONSENTIMIENTO LEGAL
+  const handleAceptarTerminos = () => {
+    setMostrarAviso(false);
+    // Solo pedimos la ubicación SI el usuario acepta
     obtenerUbicacion()
       .then(({ lat, lng }) => {
         setMiUbicacion({ lat, lng });
         setViewState((v) => ({ ...v, latitude: lat, longitude: lng, zoom: 14 }));
       })
-      .catch(() => {}); // Si todo falla, el mapa queda centrado en Medellín
-  }, []);
+      .catch(() => {}); // Si deniega en el navegador, queda en Medellín
+  };
+
+  const handleRechazarTerminos = () => {
+    setMostrarAviso(false);
+    // El mapa simplemente se queda en el centro de Medellín sin pedir GPS
+  };
 
   // Cuando el formulario confirma GPS preciso, actualiza la ubicación y pone el pin
   useEffect(() => {
@@ -158,12 +168,50 @@ export default function MapaPrincipal({
     onUbicacionRef.current?.(lat, lng);
   }
 
-  const pinEsDiferente =
-    marcador &&
-    !(miUbicacion?.lat === marcador.lat && miUbicacion?.lng === marcador.lng);
-
   return (
     <div className="relative w-full h-screen">
+      
+      {/* MODAL LEGAL DE CONSENTIMIENTO */}
+      {mostrarAviso && (
+        <div className="absolute inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white text-black p-6 rounded-2xl max-w-md w-full shadow-2xl">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              📍 Aviso de Privacidad
+            </h2>
+            <div className="text-sm text-gray-700 space-y-3 mb-6">
+              <p>
+                Para ofrecerte una mejor experiencia y mostrar tu posición exacta en el mapa, necesitamos acceso a la <strong>ubicación GPS de tu dispositivo</strong>.
+              </p>
+              <p>
+                Al hacer clic en "Aceptar", confirmas que estás de acuerdo con:
+              </p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Permitir que el navegador utilice tu ubicación en tiempo real.</li>
+                <li>Que los reportes que generes guarden las coordenadas geográficas de forma pública para el mapa de calor de la ciudad.</li>
+              </ul>
+              <p className="text-xs text-gray-500 italic mt-2">
+                * Tus datos personales no son rastreados, únicamente se guarda la información explícita de los reportes de basura.
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button 
+                onClick={handleAceptarTerminos}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
+              >
+                Aceptar y Continuar
+              </button>
+             {/*  <button 
+                onClick={handleRechazarTerminos}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition"
+              >
+                No Acepto
+              </button> */}
+            </div>
+          </div>
+        </div>
+      )}
+
       <Map
         {...viewState}
         onMove={(evt: ViewStateChangeEvent) => setViewState(evt.viewState)}
@@ -174,8 +222,6 @@ export default function MapaPrincipal({
         maxBounds={BOUNDS_MEDELLIN}
         minZoom={11}  
       >
-      
-
         <Source id="reportes" type="geojson" data={geojson}>
           <Layer {...heatmapLayer} />
         </Source>
@@ -192,15 +238,6 @@ export default function MapaPrincipal({
             </div>
           </Marker>
         )}
-
-        {/* Pin 📍 solo cuando se marca una ubicación diferente a la del usuario */}
-        {/* {pinEsDiferente && (
-          <Marker latitude={marcador!.lat} longitude={marcador!.lng}>
-            <div className="text-3xl -translate-x-1/2 -translate-y-full drop-shadow-lg">
-              📍
-            </div>
-          </Marker>
-        )} */}
       </Map>
 
       {modoSeleccion && (
@@ -209,7 +246,7 @@ export default function MapaPrincipal({
         </div>
       )}
 
-      <div className="absolute bottom-8 left-5 bg-black/70 text-white px-4 py-2 rounded-lg text-sm">
+      <div className="absolute top-5 left-5 bg-black/70 text-white px-4 py-2 rounded-lg text-sm z-10">
         🗑️ {reportes.length} reporte{reportes.length !== 1 ? "s" : ""} activo
         {reportes.length !== 1 ? "s" : ""}
       </div>
