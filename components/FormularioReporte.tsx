@@ -313,7 +313,7 @@ export default function FormularioReporte({
                 <button
                   type="button"
                   onClick={handleCerrar}
-                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 transition"
+                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 transition text-black"
                 >
                   Cancelar
                 </button>
