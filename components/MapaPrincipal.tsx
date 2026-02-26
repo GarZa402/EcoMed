@@ -30,20 +30,20 @@ export interface Reporte {
 type EstiloMapa = "dark" | "standard" | "satellite";
 
 const estilos: Record<EstiloMapa, string> = {
-  dark:      "mapbox://styles/mapbox/dark-v11",
-  standard:  "mapbox://styles/mapbox/standard",
+  dark: "mapbox://styles/mapbox/dark-v11",
+  standard: "mapbox://styles/mapbox/standard",
   satellite: "mapbox://styles/mapbox/satellite-streets-v12",
 };
 
 const siguienteEstilo: Record<EstiloMapa, EstiloMapa> = {
-  dark:      "standard",
-  standard:  "satellite",
+  dark: "standard",
+  standard: "satellite",
   satellite: "dark",
 };
 
 const etiquetas: Record<EstiloMapa, string> = {
-  dark:      "🌙 Oscuro",
-  standard:  "🗺️ Estándar",
+  dark: "🌙 Oscuro",
+  standard: "🗺️ Estándar",
   satellite: "🛰️ Satélite",
 };
 
@@ -51,18 +51,27 @@ const heatmapLayer: LayerProps = {
   id: "heatmap",
   type: "heatmap",
   paint: {
-    "heatmap-weight":    ["interpolate", ["linear"], ["zoom"], 0, 0.3, 12, 1],
+    "heatmap-weight": ["interpolate", ["linear"], ["zoom"], 0, 0.3, 12, 1],
     "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 0.2, 12, 0.8],
-    "heatmap-radius":    ["interpolate", ["linear"], ["zoom"], 0, 10,  12, 25],
+    "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 10, 12, 25],
     "heatmap-color": [
-      "interpolate", ["linear"], ["heatmap-density"],
-      0,   "rgba(0,0,0,0)",
-      0.1, "#2563eb",
-      0.3, "#06b6d4",
-      0.5, "#22c55e",
-      0.7, "#eab308",
-      0.9, "#f97316",
-      1.0, "#ef4444",
+      "interpolate",
+      ["linear"],
+      ["heatmap-density"],
+      0,
+      "rgba(0,0,0,0)",
+      0.1,
+      "#2563eb",
+      0.3,
+      "#06b6d4",
+      0.5,
+      "#22c55e",
+      0.7,
+      "#eab308",
+      0.9,
+      "#f97316",
+      1.0,
+      "#ef4444",
     ],
     "heatmap-opacity": 0.85,
   },
@@ -70,11 +79,14 @@ const heatmapLayer: LayerProps = {
 
 function obtenerUbicacion(): Promise<{ lat: number; lng: number }> {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) { reject(); return; }
+    if (!navigator.geolocation) {
+      reject();
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => reject(),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
     );
   });
 }
@@ -96,11 +108,17 @@ export default function MapaPrincipal({
     zoom: 12,
   });
 
-  const [estilo, setEstilo]           = useState<EstiloMapa>("dark");
-  const [marcador, setMarcador]       = useState<{ lat: number; lng: number } | null>(null);
-  const [miUbicacion, setMiUbicacion] = useState<{ lat: number; lng: number } | null>(null);
+  const [estilo, setEstilo] = useState<EstiloMapa>("dark");
+  const [marcador, setMarcador] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
+  const [miUbicacion, setMiUbicacion] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [modalEcoMed, setModalEcoMed] = useState(false);
+  const[modalPrivacidad, setModalPrivacidad] = useState(false);
 
   const onUbicacionRef = useRef(onUbicacionSeleccionada);
   useEffect(() => {
@@ -111,7 +129,12 @@ export default function MapaPrincipal({
     obtenerUbicacion()
       .then(({ lat, lng }) => {
         setMiUbicacion({ lat, lng });
-        setViewState((v) => ({ ...v, latitude: lat, longitude: lng, zoom: 14 }));
+        setViewState((v) => ({
+          ...v,
+          latitude: lat,
+          longitude: lng,
+          zoom: 14,
+        }));
       })
       .catch(() => {});
   }, []);
@@ -132,10 +155,13 @@ export default function MapaPrincipal({
     if (modoSeleccion) setMarcador(null);
   }, [modoSeleccion]);
 
-
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") { setMenuAbierto(false); setModalEcoMed(false); }
+      if (e.key === "Escape") {
+        setMenuAbierto(false);
+        setModalEcoMed(false);
+        setModalPrivacidad(false);
+      }
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -155,11 +181,14 @@ export default function MapaPrincipal({
         },
       })),
     }),
-    [reportes]
+    [reportes],
   );
 
   function handleMapClick(evt: MapMouseEvent) {
-    if (menuAbierto) { setMenuAbierto(false); return; }
+    if (menuAbierto) {
+      setMenuAbierto(false);
+      return;
+    }
     if (!modoSeleccion) return;
     const { lat, lng } = evt.lngLat;
     setMarcador({ lat, lng });
@@ -200,7 +229,9 @@ export default function MapaPrincipal({
 
         {pinEsDiferente && (
           <Marker latitude={marcador!.lat} longitude={marcador!.lng}>
-            <div className="text-3xl -translate-x-1/2 -translate-y-full drop-shadow-lg">📍</div>
+            <div className="text-3xl -translate-x-1/2 -translate-y-full drop-shadow-lg">
+              📍
+            </div>
           </Marker>
         )}
       </Map>
@@ -232,9 +263,15 @@ export default function MapaPrincipal({
         className="absolute top-5 left-5 bg-white w-10 h-10 rounded-lg shadow-md z-20 flex flex-col items-center justify-center gap-1.5 hover:bg-gray-100 transition"
         aria-label="Menú"
       >
-        <span className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${menuAbierto ? "rotate-45 translate-y-2" : ""}`} />
-        <span className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${menuAbierto ? "opacity-0" : ""}`} />
-        <span className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${menuAbierto ? "-rotate-45 -translate-y-2" : ""}`} />
+        <span
+          className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${menuAbierto ? "rotate-45 translate-y-2" : ""}`}
+        />
+        <span
+          className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${menuAbierto ? "opacity-0" : ""}`}
+        />
+        <span
+          className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${menuAbierto ? "-rotate-45 -translate-y-2" : ""}`}
+        />
       </button>
 
       {/* ── Menú desplegable ── */}
@@ -248,12 +285,28 @@ export default function MapaPrincipal({
           <div className="absolute top-16 left-5 z-20 bg-white rounded-xl shadow-xl w-56 overflow-hidden">
             {/* ¿Qué es EcoMed? */}
             <button
-              onClick={() => { setModalEcoMed(true); setMenuAbierto(false); }}
+              onClick={() => {
+                setModalEcoMed(true);
+                setMenuAbierto(false);
+              }}
               className="w-full text-left px-5 py-4 text-sm font-medium text-gray-800 hover:bg-gray-50 transition flex items-center gap-3"
             >
               <span className="text-lg">🌿</span>
               ¿Qué es EcoMed?
             </button>
+
+            {/* Política de Privacidad */}
+            <button
+              onClick={() => {
+                setModalPrivacidad(true);
+                setMenuAbierto(false);
+              }}
+              className="w-full text-left px-5 py-4 text-sm font-medium text-gray-800 hover:bg-gray-50 transition flex items-center gap-3"
+            >
+              <span className="text-lg">🔑</span>
+              Política de Privacidad
+            </button>
+            
 
             <div className="h-px bg-gray-100 mx-4" />
 
@@ -317,6 +370,59 @@ export default function MapaPrincipal({
 
             <button
               onClick={() => setModalEcoMed(false)}
+              className="mt-6 w-full bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold py-3 rounded-xl transition"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
+      {modalPrivacidad && (
+        <div
+          className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm"
+          onClick={() => setModalPrivacidad(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cerrar */}
+            <button
+              onClick={() => setModalEcoMed(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl leading-none"
+            >
+              ✕
+            </button>
+
+            {/* Ícono */}
+            <div className="text-4xl mb-4">🔑</div>
+
+            {/* Título */}
+            <h2 className="text-gray-900 font-bold text-xl mb-4 tracking-tight">
+              Política de Privacidad
+            </h2>
+
+            {/* Explicación */}
+            <p className="text-gray-500 text-sm leading-relaxed mb-4">
+              Nuestra Política de Privacidad explica cómo recopilamos, usamos y protegemos
+              la información personal de nuestros usuarios. Al utilizar EcoMed, aceptas
+              los términos de esta política.
+            </p>
+
+            {/* Impacto */}
+            <div className="bg-yellow-50 rounded-xl px-4 py-4">
+              <p className="text-yellow-800 text-xs font-semibold uppercase tracking-wider mb-2">
+                Nuestra Política
+              </p>
+              <p className="text-gray-700 text-sm leading-relaxed">
+                Recopilamos información como tu ubicación geográfica para mostrar
+                en el mapa de calor y mejorar la experiencia del usuario. Toda tu información está protegida.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setModalPrivacidad(false)}
               className="mt-6 w-full bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold py-3 rounded-xl transition"
             >
               Entendido
