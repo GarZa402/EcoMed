@@ -83,12 +83,14 @@ interface Props {
   reportes: Reporte[];
   modoSeleccion?: boolean;
   onUbicacionSeleccionada?: (lat: number, lng: number) => void;
+  botonReporte?: React.ReactNode;
 }
 
 export default function MapaPrincipal({
   reportes,
   modoSeleccion = false,
   onUbicacionSeleccionada,
+  botonReporte,
 }: Props) {
   const [viewState, setViewState] = useState({
     longitude: -75.567,
@@ -131,7 +133,6 @@ export default function MapaPrincipal({
   useEffect(() => {
     if (modoSeleccion) setMarcador(null);
   }, [modoSeleccion]);
-
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -212,12 +213,6 @@ export default function MapaPrincipal({
         </div>
       )}
 
-      {/* ── Contador ── */}
-      <div className="absolute bottom-8 left-5 bg-black/70 text-white px-4 py-2 rounded-lg text-sm z-10">
-        🗑️ {reportes.length} reporte{reportes.length !== 1 ? "s" : ""} activo
-        {reportes.length !== 1 ? "s" : ""}
-      </div>
-
       {/* ── Toggle estilo ── */}
       <button
         onClick={() => setEstilo(siguienteEstilo[estilo])}
@@ -237,16 +232,24 @@ export default function MapaPrincipal({
         <span className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${menuAbierto ? "-rotate-45 -translate-y-2" : ""}`} />
       </button>
 
+      {/* ── Barra inferior — siempre visible, nunca se rompe en móvil ── */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 flex items-center justify-between gap-3 px-4 py-4 pointer-events-none">
+        {/* Contador — izquierda */}
+        <div className="pointer-events-auto flex-shrink-0 bg-black/70 backdrop-blur-sm text-white px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium shadow whitespace-nowrap">
+          🗑️ {reportes.length} reporte{reportes.length !== 1 ? "s" : ""} activo{reportes.length !== 1 ? "s" : ""}
+        </div>
+
+        {/* Botón reportar — derecha (inyectado desde HomeClient) */}
+        <div className="pointer-events-auto flex-shrink-0">
+          {botonReporte}
+        </div>
+      </div>
+
       {/* ── Menú desplegable ── */}
       {menuAbierto && (
         <>
-          {/* Backdrop para cerrar al hacer clic fuera */}
-          <div
-            className="absolute inset-0 z-10"
-            onClick={() => setMenuAbierto(false)}
-          />
+          <div className="absolute inset-0 z-10" onClick={() => setMenuAbierto(false)} />
           <div className="absolute top-16 left-5 z-20 bg-white rounded-xl shadow-xl w-56 overflow-hidden">
-            {/* ¿Qué es EcoMed? */}
             <button
               onClick={() => { setModalEcoMed(true); setMenuAbierto(false); }}
               className="w-full text-left px-5 py-4 text-sm font-medium text-gray-800 hover:bg-gray-50 transition flex items-center gap-3"
@@ -254,10 +257,7 @@ export default function MapaPrincipal({
               <span className="text-lg">🌿</span>
               ¿Qué es EcoMed?
             </button>
-
             <div className="h-px bg-gray-100 mx-4" />
-
-            {/* Iniciar sesión — al fondo del menú */}
             <Link
               href="/admin"
               onClick={() => setMenuAbierto(false)}
@@ -280,30 +280,19 @@ export default function MapaPrincipal({
             className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 relative"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Cerrar */}
             <button
               onClick={() => setModalEcoMed(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl leading-none"
-            >
-              ✕
-            </button>
-
-            {/* Ícono */}
+            >✕</button>
             <div className="text-4xl mb-4">🌿</div>
-
-            {/* Título */}
             <h2 className="text-gray-900 font-bold text-xl mb-4 tracking-tight">
               ¿Qué es EcoMed?
             </h2>
-
-            {/* Explicación */}
             <p className="text-gray-500 text-sm leading-relaxed mb-4">
               EcoMed es una plataforma ciudadana para reportar acumulaciones de
               basura en Medellín. Cualquier persona puede marcar un punto en el
               mapa y describir el problema.
             </p>
-
-            {/* Impacto */}
             <div className="bg-green-50 rounded-xl px-4 py-4">
               <p className="text-green-800 text-xs font-semibold uppercase tracking-wider mb-2">
                 Su impacto
@@ -314,7 +303,6 @@ export default function MapaPrincipal({
                 y apoyar una gestión de residuos más eficiente en la ciudad.
               </p>
             </div>
-
             <button
               onClick={() => setModalEcoMed(false)}
               className="mt-6 w-full bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold py-3 rounded-xl transition"
