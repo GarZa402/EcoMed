@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo, useEffect, useRef } from "react";
+import Link from "next/link";
 import Map, {
   Source,
   Layer,
@@ -11,8 +12,8 @@ import Map, {
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const BOUNDS_MEDELLIN: [[number, number], [number, number]] = [
-  [-75.68, 6.05],
-  [-75.25, 6.48],
+  [-75.85, 5.95],
+  [-75.25, 6.55],
 ];
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -67,14 +68,12 @@ const heatmapLayer: LayerProps = {
   },
 };
 
-// Intenta obtener ubicación con alta precisión, si falla usa la de red
 function obtenerUbicacion(): Promise<{ lat: number; lng: number }> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject(); return; }
-
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => reject(), // si falla, no hay fallback — el mapa queda en Medellín
+      () => reject(),
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
   });
@@ -97,36 +96,26 @@ export default function MapaPrincipal({
     zoom: 12,
   });
 
-  const [estilo, setEstilo] = useState<EstiloMapa>("dark");
-  const [marcador, setMarcador] = useState<{ lat: number; lng: number } | null>(null);
+  const [estilo, setEstilo]           = useState<EstiloMapa>("dark");
+  const [marcador, setMarcador]       = useState<{ lat: number; lng: number } | null>(null);
   const [miUbicacion, setMiUbicacion] = useState<{ lat: number; lng: number } | null>(null);
-  
-  // ESTADO PARA EL MODAL LEGAL
-  const [mostrarAviso, setMostrarAviso] = useState(true);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [modalEcoMed, setModalEcoMed] = useState(false);
 
   const onUbicacionRef = useRef(onUbicacionSeleccionada);
   useEffect(() => {
     onUbicacionRef.current = onUbicacionSeleccionada;
   }, [onUbicacionSeleccionada]);
 
-  // FUNCIONES PARA EL CONSENTIMIENTO LEGAL
-  const handleAceptarTerminos = () => {
-    setMostrarAviso(false);
-    // Solo pedimos la ubicación SI el usuario acepta
+  useEffect(() => {
     obtenerUbicacion()
       .then(({ lat, lng }) => {
         setMiUbicacion({ lat, lng });
         setViewState((v) => ({ ...v, latitude: lat, longitude: lng, zoom: 14 }));
       })
-      .catch(() => {}); // Si deniega en el navegador, queda en Medellín
-  };
+      .catch(() => {});
+  }, []);
 
-  const handleRechazarTerminos = () => {
-    setMostrarAviso(false);
-    // El mapa simplemente se queda en el centro de Medellín sin pedir GPS
-  };
-
-  // Cuando el formulario confirma GPS preciso, actualiza la ubicación y pone el pin
   useEffect(() => {
     function handleGPS(e: Event) {
       const { lat, lng } = (e as CustomEvent).detail;
@@ -139,10 +128,18 @@ export default function MapaPrincipal({
     return () => window.removeEventListener("ubicacion-gps", handleGPS);
   }, []);
 
-  // Limpia el pin de reporte al entrar en modo selección manual
   useEffect(() => {
     if (modoSeleccion) setMarcador(null);
   }, [modoSeleccion]);
+
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { setMenuAbierto(false); setModalEcoMed(false); }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
 
   const geojson: GeoJSON.FeatureCollection<GeoJSON.Point> = useMemo(
     () => ({
@@ -162,56 +159,19 @@ export default function MapaPrincipal({
   );
 
   function handleMapClick(evt: MapMouseEvent) {
+    if (menuAbierto) { setMenuAbierto(false); return; }
     if (!modoSeleccion) return;
     const { lat, lng } = evt.lngLat;
     setMarcador({ lat, lng });
     onUbicacionRef.current?.(lat, lng);
   }
 
+  const pinEsDiferente =
+    marcador &&
+    !(miUbicacion?.lat === marcador.lat && miUbicacion?.lng === marcador.lng);
+
   return (
     <div className="relative w-full h-screen">
-      
-      {/* MODAL LEGAL DE CONSENTIMIENTO */}
-      {mostrarAviso && (
-        <div className="absolute inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white text-black p-6 rounded-2xl max-w-md w-full shadow-2xl">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              📍 Aviso de Privacidad
-            </h2>
-            <div className="text-sm text-gray-700 space-y-3 mb-6">
-              <p>
-                Para ofrecerte una mejor experiencia y mostrar tu posición exacta en el mapa, necesitamos acceso a la <strong>ubicación GPS de tu dispositivo</strong>.
-              </p>
-              <p>
-                Al hacer clic en "Aceptar", confirmas que estás de acuerdo con:
-              </p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Permitir que el navegador utilice tu ubicación en tiempo real.</li>
-                <li>Que los reportes que generes guarden las coordenadas geográficas de forma pública para el mapa de calor de la ciudad.</li>
-              </ul>
-              <p className="text-xs text-gray-500 italic mt-2">
-                * Tus datos personales no son rastreados, únicamente se guarda la información explícita de los reportes de basura.
-              </p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button 
-                onClick={handleAceptarTerminos}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
-              >
-                Aceptar y Continuar
-              </button>
-             {/*  <button 
-                onClick={handleRechazarTerminos}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition"
-              >
-                No Acepto
-              </button> */}
-            </div>
-          </div>
-        </div>
-      )}
-
       <Map
         {...viewState}
         onMove={(evt: ViewStateChangeEvent) => setViewState(evt.viewState)}
@@ -220,13 +180,12 @@ export default function MapaPrincipal({
         mapStyle={estilos[estilo]}
         mapboxAccessToken={MAPBOX_TOKEN}
         maxBounds={BOUNDS_MEDELLIN}
-        minZoom={11}  
+        minZoom={11}
       >
         <Source id="reportes" type="geojson" data={geojson}>
           <Layer {...heatmapLayer} />
         </Source>
 
-        {/* Punto "Tú estás aquí" */}
         {miUbicacion && (
           <Marker latitude={miUbicacion.lat} longitude={miUbicacion.lng}>
             <div className="relative flex items-center justify-center">
@@ -238,25 +197,133 @@ export default function MapaPrincipal({
             </div>
           </Marker>
         )}
+
+        {pinEsDiferente && (
+          <Marker latitude={marcador!.lat} longitude={marcador!.lng}>
+            <div className="text-3xl -translate-x-1/2 -translate-y-full drop-shadow-lg">📍</div>
+          </Marker>
+        )}
       </Map>
 
+      {/* ── Instrucción modo selección ── */}
       {modoSeleccion && (
         <div className="absolute top-5 left-1/2 -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-lg text-sm z-10 pointer-events-none">
           Haz clic en el mapa para marcar la ubicación
         </div>
       )}
 
-      <div className="absolute top-5 left-5 bg-black/70 text-white px-4 py-2 rounded-lg text-sm z-10">
+      {/* ── Contador ── */}
+      <div className="absolute bottom-8 left-5 bg-black/70 text-white px-4 py-2 rounded-lg text-sm z-10">
         🗑️ {reportes.length} reporte{reportes.length !== 1 ? "s" : ""} activo
         {reportes.length !== 1 ? "s" : ""}
       </div>
 
+      {/* ── Toggle estilo ── */}
       <button
         onClick={() => setEstilo(siguienteEstilo[estilo])}
-        className="absolute top-5 right-5 bg-white px-3 py-2 rounded-lg shadow-md text-sm font-semibold z-10 hover:bg-gray-100 transition text-black"
+        className="absolute top-5 right-5 bg-white px-3 py-2 rounded-lg shadow-md text-sm font-semibold z-10 hover:bg-gray-100 transition"
       >
         {etiquetas[siguienteEstilo[estilo]]}
       </button>
+
+      {/* ── Botón hamburguesa ── */}
+      <button
+        onClick={() => setMenuAbierto(!menuAbierto)}
+        className="absolute top-5 left-5 bg-white w-10 h-10 rounded-lg shadow-md z-20 flex flex-col items-center justify-center gap-1.5 hover:bg-gray-100 transition"
+        aria-label="Menú"
+      >
+        <span className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${menuAbierto ? "rotate-45 translate-y-2" : ""}`} />
+        <span className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${menuAbierto ? "opacity-0" : ""}`} />
+        <span className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${menuAbierto ? "-rotate-45 -translate-y-2" : ""}`} />
+      </button>
+
+      {/* ── Menú desplegable ── */}
+      {menuAbierto && (
+        <>
+          {/* Backdrop para cerrar al hacer clic fuera */}
+          <div
+            className="absolute inset-0 z-10"
+            onClick={() => setMenuAbierto(false)}
+          />
+          <div className="absolute top-16 left-5 z-20 bg-white rounded-xl shadow-xl w-56 overflow-hidden">
+            {/* ¿Qué es EcoMed? */}
+            <button
+              onClick={() => { setModalEcoMed(true); setMenuAbierto(false); }}
+              className="w-full text-left px-5 py-4 text-sm font-medium text-gray-800 hover:bg-gray-50 transition flex items-center gap-3"
+            >
+              <span className="text-lg">🌿</span>
+              ¿Qué es EcoMed?
+            </button>
+
+            <div className="h-px bg-gray-100 mx-4" />
+
+            {/* Iniciar sesión — al fondo del menú */}
+            <Link
+              href="/admin"
+              onClick={() => setMenuAbierto(false)}
+              className="w-full text-left px-5 py-4 text-sm font-medium text-gray-500 hover:bg-gray-50 transition flex items-center gap-3"
+            >
+              <span className="text-lg">🔒</span>
+              Iniciar sesión
+            </Link>
+          </div>
+        </>
+      )}
+
+      {/* ── Modal ¿Qué es EcoMed? ── */}
+      {modalEcoMed && (
+        <div
+          className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm"
+          onClick={() => setModalEcoMed(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cerrar */}
+            <button
+              onClick={() => setModalEcoMed(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl leading-none"
+            >
+              ✕
+            </button>
+
+            {/* Ícono */}
+            <div className="text-4xl mb-4">🌿</div>
+
+            {/* Título */}
+            <h2 className="text-gray-900 font-bold text-xl mb-4 tracking-tight">
+              ¿Qué es EcoMed?
+            </h2>
+
+            {/* Explicación */}
+            <p className="text-gray-500 text-sm leading-relaxed mb-4">
+              EcoMed es una plataforma ciudadana para reportar acumulaciones de
+              basura en Medellín. Cualquier persona puede marcar un punto en el
+              mapa y describir el problema.
+            </p>
+
+            {/* Impacto */}
+            <div className="bg-green-50 rounded-xl px-4 py-4">
+              <p className="text-green-800 text-xs font-semibold uppercase tracking-wider mb-2">
+                Su impacto
+              </p>
+              <p className="text-green-700 text-sm leading-relaxed">
+                El mapa de calor muestra en tiempo real las zonas con mayor
+                concentración de basura, permitiendo identificar puntos críticos
+                y apoyar una gestión de residuos más eficiente en la ciudad.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setModalEcoMed(false)}
+              className="mt-6 w-full bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold py-3 rounded-xl transition"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
