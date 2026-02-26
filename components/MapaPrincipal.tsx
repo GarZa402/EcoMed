@@ -389,7 +389,7 @@ export default function MapaPrincipal({
           >
             {/* Cerrar */}
             <button
-              onClick={() => setModalEcoMed(false)}
+              onClick={() => setModalPrivacidad(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl leading-none"
             >
               ✕
