@@ -31,17 +31,14 @@ export default function HomeClient({ reportes }: { reportes: Reporte[] }) {
           setUbicacionSeleccionada({ lat, lng });
           setModoSeleccion(false);
         }}
-        botonReporte={
-          // FormularioReporte vive dentro de la barra inferior del mapa
-          <FormularioReporte
-            onReporteCreado={() => {
-              setUbicacionSeleccionada(null);
-              router.refresh();
-            }}
-            onModoSeleccionChange={setModoSeleccion}
-            ubicacionSeleccionada={ubicacionSeleccionada}
-          />
-        }
+      />
+      <FormularioReporte
+        onReporteCreado={() => {
+          setUbicacionSeleccionada(null);
+          router.refresh();
+        }}
+        onModoSeleccionChange={setModoSeleccion}
+        ubicacionSeleccionada={ubicacionSeleccionada}
       />
     </main>
   );
